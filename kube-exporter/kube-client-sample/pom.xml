@@ -20,6 +20,24 @@
 
   <dependencies>
     <dependency>
+      <groupId>com.tmax.tibero</groupId>
+      <artifactId>tibero-jdbc</artifactId>
+      <version>6</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/src/main/java/com/tmax/ck/resources/tibero6-jdbc.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>org.json</groupId>
+      <artifactId>json</artifactId>
+      <version>20160212</version>
+    </dependency>
+    <dependency>
+      <groupId>org.nanohttpd</groupId>
+      <artifactId>nanohttpd</artifactId>
+      <version>2.3.1</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>4.11</version>
@@ -28,7 +46,7 @@
     <dependency>
       <groupId>io.kubernetes</groupId>
       <artifactId>client-java</artifactId>
-      <version>10.0.0</version>
+      <version>12.0.0</version>
     </dependency>
     <dependency>
       <groupId>com.google.code.gson</groupId>

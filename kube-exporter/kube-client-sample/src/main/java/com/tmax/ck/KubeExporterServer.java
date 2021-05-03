@@ -15,6 +15,8 @@ import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.Configuration;
 import io.kubernetes.client.util.Config;
 
+import org.json.*;
+
 public class KubeExporterServer {
     private ThreadPoolExecutor executor;
     private LinkedBlockingDeque<DataObject> historyInsertQueue;
@@ -24,6 +26,7 @@ public class KubeExporterServer {
     public enum State {INIT, RUNNING, STOPPED};
     private State state = State.INIT;
     private ApiClient client;
+    public Tibero tibero;
 
     public void init() throws FileNotFoundException {
         state = State.INIT;
@@ -50,8 +53,32 @@ public class KubeExporterServer {
                         
                         for (DataObject obj : insertObjectList) {
                             /** batch insert logic here */
-                            System.out.println("insert DataObject");
-                            System.out.println(object);
+                            System.out.println("DataObject : ");
+                            System.out.println(obj);
+                            
+                            if(obj!=null){
+                                String uid = obj.getPrimaryKey();
+                                String type = obj.getType();
+                                String xml = XML.toString(new JSONObject(obj.getPayload()));
+                                String query = "INSERT INTO \"HELLO\".\"ci_instance\"\n"
+                                            + "VALUES("
+                                            + "\"" + uid + "\"" + ","
+                                            + "\"" + type + "\"" + ","
+                                            + "sys.XMLType.createXML('" + xml + "'));";
+                                System.out.println("query to execute : \n" + query);
+
+                                tibero = new Tibero("172.23.4.101", 31516, "tibero", "hello", "tibero");
+                                tibero.connect();
+                                System.out.println("connected to tibero");
+                                
+                                tibero.executeQuery(query);
+                                System.out.println("executed query\n\n");
+
+                                tibero.executeQuery("SELECT * FROM  \"HELLO\".\"ci_instance\"");
+
+                                tibero.disconnect();
+                                System.out.println("\n\ndisconnected from tibero");
+                            }
                         }
                         
                         /** clear insert list */
@@ -71,9 +98,15 @@ public class KubeExporterServer {
         });
         insertThread.start();
 
-        /** read from SA secret */
-        client = Config.fromToken("https://192.168.6.171:6443", "eyJhbGciOiJSUzI1NiIsImtpZCI6InpsaTd2ME04MWpfZUp0Wm5sY1VjUW52WVRqdXo5c29mWHNPSmx4WFd1a3cifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJiamhhbi10ZXN0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6InN1cGVyLWFkbWluLXNhLXRva2VuLTd4OHJrIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6InN1cGVyLWFkbWluLXNhIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQudWlkIjoiOTIyY2Y2OWUtM2U1My00MGNkLWFmZjAtOTMzN2EyZDViMmMyIiwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50OmJqaGFuLXRlc3Q6c3VwZXItYWRtaW4tc2EifQ.Dc5wkzoNHUGPjtmma9cHEhp8eJt474gGfv92uSOexSL9N2eJQwitJa7ay3u3MIJxivPKg9ljul2QXM6-OAWcaqk3lPsf4r5c5cA5OMxKLSJ0ZUNYlOqd_fFTycq1snYNktAHAjGMT_-pFO0FW5flJGGkBmPmQKM9LfPVYZTtKNw04Gx_AAGBuR1Ty0_MMNd37tLV4uYXpYB3mq3qKZi_gQ9n5DKqJUrdZDLrTBXJUearVokKFs-TxFz6SkvJ3KlN1ZfRtJ5BwQrgF9zewYqfyKtTeM3MWcC2ASLDf7X3WdrDmQd-pGCuHd1dtv_KfH73j2ObLaCnUBNs8p_7QMGqkA");
-        client.setSslCaCert(new FileInputStream(new File("C:/@DEV/ca.crt")));
+        /** TODO: read from SA secret */
+        String bearerToken = "eyJhbGciOiJSUzI1NiIsImtpZCI6Inc2X1BmdWZRS1hRR3JleWdmbXJQN0tnRC1lQkFYZG5reVpQUGloYm5aNGcifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6Imt1YmUtZXhwb3J0ZXItdG9rZW4tcWJ6a2oiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoia3ViZS1leHBvcnRlciIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjhmYzIwNDM4LTRjNWQtNDAxMi1hNzBmLTdkMGVkMzkwZWUwZSIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0Omt1YmUtZXhwb3J0ZXIifQ.kGWmWHfrfy_thbZl-VL4zLwoL1Y0WHl5Wg6FujBjA8vpTmSzhNRdeSuph3xUJYeeYji1BpInc3M_2zVYr8oA1hdHPThbYLOiPYJxtUXolO-HoZ8pqXryjj6F8FeFZwm_Qfurv8FQ3m77k29vJmPpJB3bfTExE3DNIRuGwSl_eMrIYtkj5c7PHKQFUj_inRCVn1-mRRDhcHk7EJ-SCXPQdt1EqCwX-aBgGxzFxMpi6e0KMrI3M_gXp_MtToxzY5ZXdgEHTN1nJ804AMqoA6WZ5AmbtN3nHrhps-cJWmYAMPadKrlTmlWuW_zXnb-IF-Pi71bdSLktn2fXpx_vKe5oPw";
+        String kubeApiServer = "https://kubernetes.docker.internal:6443";
+        client = Config.fromToken(kubeApiServer, bearerToken);
+
+        // String currentPath = new File("").getAbsolutePath();
+        File cacert = new File("./kube-exporter/kube-client-sample/src/main/java/com/tmax/ck/resources/ca.crt");
+        // System.out.println("ca.crt 존재 여부? " + cacert.exists());
+        client.setSslCaCert(new FileInputStream(cacert));
         client.setReadTimeout(0);
         Configuration.setDefaultApiClient(client);
     }
@@ -82,7 +115,7 @@ public class KubeExporterServer {
 
     }
     
-    public void addResource(String name, String url) {
+    public void addResource(String url) {
         /** test */
         KubeApiExporter kubeApiExporter = new KubeApiExporter(url, client, historyInsertQueue);
         executor.execute(kubeApiExporter);

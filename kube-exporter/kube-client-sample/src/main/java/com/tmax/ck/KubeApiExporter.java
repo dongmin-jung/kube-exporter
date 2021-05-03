@@ -48,10 +48,10 @@ public class KubeApiExporter extends Thread {
                 if (line != null) {
                     JsonObject jsonObject = gson.fromJson(line, JsonObject.class);
                     DataObject insertObject = null;
-                    String action = getAction(jsonObject);
                     String key = getPK(jsonObject);
+                    String type = getType(jsonObject);
                     String payload = getPayload(jsonObject);
-                    insertObject = new DataObject(action, key, payload);
+                    insertObject = new DataObject(key, type, payload);
                     insertQueue.push(insertObject);
                 }
             }
@@ -65,13 +65,16 @@ public class KubeApiExporter extends Thread {
     }
 
     private String getPK(JsonObject jsonObject) {
-        String kind = jsonObject.get("object").getAsJsonObject().get("kind").getAsString();
-        String namespace = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("namespace").getAsString();
-        String name = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("name").getAsString();
-        return kind + "." + namespace + "." + name;
+        // String kind = jsonObject.get("object").getAsJsonObject().get("kind").getAsString();
+        // String namespace = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("namespace").getAsString();
+        // String name = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("name").getAsString();
+        // return kind + "." + namespace + "." + name;
+        String uid = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("uid").getAsString();
+        return uid;
     }
 
-    private String getAction(JsonObject jsonObject) {
-        return jsonObject.get("type").getAsString();
+    private String getType(JsonObject jsonObject) {
+        String type = jsonObject.get("object").getAsJsonObject().get("kind").getAsString();
+        return type;
     }
 }
