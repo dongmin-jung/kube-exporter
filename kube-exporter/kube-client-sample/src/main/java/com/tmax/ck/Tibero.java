@@ -17,6 +17,10 @@ public class Tibero {
     private String user;// = "hello";
     private String password;// = "tibero";
 
+    public Tibero(){
+        this("172.23.4.101", 31516, "tibero", "hello", "tibero");
+    }
+
     public Tibero(String ip, int port, String database, String user, String password){
         this.ip = ip;
         this.port = port;

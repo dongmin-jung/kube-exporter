@@ -67,7 +67,7 @@ public class KubeExporterServer {
                                             + "sys.XMLType.createXML('" + xml + "'));";
                                 System.out.println("query to execute : \n" + query);
 
-                                tibero = new Tibero("172.23.4.101", 31516, "tibero", "hello", "tibero");
+                                tibero = new Tibero();
                                 tibero.connect();
                                 System.out.println("connected to tibero");
                                 
