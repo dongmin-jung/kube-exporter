@@ -17,6 +17,10 @@ public class Tibero {
     private String user;// = "hello";
     private String password;// = "tibero";
 
+    private String DRIVER_NAME;
+    private String TIBERO_JDBC_URL;
+    private Connection conn = null;
+
     public Tibero(){
         this("172.23.4.101", 31516, "tibero", "hello", "tibero");
     }
@@ -27,16 +31,17 @@ public class Tibero {
         this.database = database;
         this.user = user;
         this.password = password;
+        this.DRIVER_NAME = "com.tmax.tibero.jdbc.TbDriver";
+        this.TIBERO_JDBC_URL = "jdbc:tibero:thin:@" + ip + ":" + port + ":" + database;
     }
-
-    private final String DRIVER_NAME = "com.tmax.tibero.jdbc.TbDriver";
-    private final String TIBERO_JDBC_URL = "jdbc:tibero:thin:@" + ip + ":" + port + ":" + database;
-    
-    private Connection conn = null;
 
     public void connect() {
         try {
         Class.forName(DRIVER_NAME);
+            System.out.println(TIBERO_JDBC_URL);
+            System.out.println(user);
+            System.out.println(password);
+
             conn = DriverManager.getConnection(TIBERO_JDBC_URL, user, password);
         } catch(ClassNotFoundException e) {
             System.err.println(e);
@@ -67,12 +72,4 @@ public class Tibero {
             }
         }
     }
-    
-    // public static void main(String[] args) {
-    //     Tibero tibero = new Tibero();
-        
-    //     tibero.connect();
-    //     tibero.executeQuery();
-    //     tibero.disconnect();
-    // }
 }
