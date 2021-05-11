@@ -37,7 +37,7 @@ public class Tibero {
 
     public void connect() {
         try {
-        Class.forName(DRIVER_NAME);
+            Class.forName(DRIVER_NAME);
             System.out.println(TIBERO_JDBC_URL);
             System.out.println(user);
             System.out.println(password);

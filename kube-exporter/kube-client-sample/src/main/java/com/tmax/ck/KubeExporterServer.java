@@ -3,6 +3,7 @@ package com.tmax.ck;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,8 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.Configuration;
@@ -53,18 +56,34 @@ public class KubeExporterServer {
                         
                         for (DataObject obj : insertObjectList) {
                             /** batch insert logic here */
-                            System.out.println("DataObject : ");
-                            System.out.println(obj);
+                            // System.out.println("DataObject : ");
+                            // System.out.println(obj);
                             
                             if(obj!=null){
-                                String uid = obj.getPrimaryKey();
+                                String unixTime = Long.toString(Instant.now().getEpochSecond());
+                                String pk = obj.getPrimaryKey();
                                 String type = obj.getType();
-                                String xml = XML.toString(new JSONObject(obj.getPayload()));
-                                String query = "INSERT INTO \"HELLO\".\"ci_instance\"\n"
-                                            + "VALUES("
-                                            + "\"" + uid + "\"" + ","
-                                            + "\"" + type + "\"" + ","
-                                            + "sys.XMLType.createXML('" + xml + "'));";
+
+                                //TODO: subtract the following match : ,"managedFields":\[({"manager":.*?},)*{"manager":.*?}\]
+                                String jsonObj = obj.getPayload();
+                                String managedFieldsRegex = ",\"managedFields\":\\[(\\{\"manager\":.*?\\},)*\\{\"manager\":.*?\\}\\]";
+                                Pattern pattern = Pattern.compile(managedFieldsRegex);
+                                Matcher matcher = pattern.matcher(jsonObj);
+                                while (matcher.find()) {
+                                    int startIdx = matcher.start();
+                                    int endIdx = matcher.end();
+                                    jsonObj = jsonObj.substring(0,startIdx) + jsonObj.substring(endIdx);
+                                }
+                                // System.out.println("jsonObj = " + jsonObj);
+
+                                String xml = XML.toString(new JSONObject(jsonObj));
+
+                                String query = "INSERT INTO \"HELLO\".\"ci_instance_history\"\n"
+                                            + "VALUES ("
+                                            + "'" + unixTime + "." + pk + "'" + ","
+                                            + "'" + unixTime + "'" + ","
+                                            + "'" + type + "'" + ","
+                                            + "XMLType('" + xml + "'));";
                                 System.out.println("query to execute : \n" + query);
 
                                 tibero = new Tibero();
@@ -73,8 +92,6 @@ public class KubeExporterServer {
                                 
                                 tibero.executeQuery(query);
                                 System.out.println("executed query\n\n");
-
-                                tibero.executeQuery("SELECT * FROM  \"HELLO\".\"ci_instance\"");
 
                                 tibero.disconnect();
                                 System.out.println("\n\ndisconnected from tibero");
