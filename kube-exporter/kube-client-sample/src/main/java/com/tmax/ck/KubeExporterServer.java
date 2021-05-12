@@ -63,20 +63,31 @@ public class KubeExporterServer {
                                 String unixTime = Long.toString(Instant.now().getEpochSecond());
                                 String pk = obj.getPrimaryKey();
                                 String type = obj.getType();
-
-                                //TODO: subtract the following match : ,"managedFields":\[({"manager":.*?},)*{"manager":.*?}\]
                                 String jsonObj = obj.getPayload();
+
+                                // drop managedFields
                                 String managedFieldsRegex = ",\"managedFields\":\\[(\\{\"manager\":.*?\\},)*\\{\"manager\":.*?\\}\\]";
-                                Pattern pattern = Pattern.compile(managedFieldsRegex);
-                                Matcher matcher = pattern.matcher(jsonObj);
-                                while (matcher.find()) {
-                                    int startIdx = matcher.start();
-                                    int endIdx = matcher.end();
+                                Pattern managedFieldsPattern = Pattern.compile(managedFieldsRegex);
+                                Matcher managedFieldsMatcher = managedFieldsPattern.matcher(jsonObj);
+                                while (managedFieldsMatcher.find()) {
+                                    int startIdx = managedFieldsMatcher.start();
+                                    int endIdx = managedFieldsMatcher.end();
                                     jsonObj = jsonObj.substring(0,startIdx) + jsonObj.substring(endIdx);
                                 }
-                                // System.out.println("jsonObj = " + jsonObj);
 
-                                String xml = XML.toString(new JSONObject(jsonObj));
+                                // replace slashes in keys
+                                String slashesInKeysRegex = "\"([^\":/]*/)+[^\":/]*\":";
+                                Pattern slashesInKeysPattern = Pattern.compile(slashesInKeysRegex);
+                                Matcher slashesInKeysMatcher = slashesInKeysPattern.matcher(jsonObj);
+                                while (slashesInKeysMatcher.find()) {
+                                    int startIdx = slashesInKeysMatcher.start();
+                                    int endIdx = slashesInKeysMatcher.end();
+                                    jsonObj = jsonObj.substring(0,startIdx) + jsonObj.substring(startIdx, endIdx).replace("/","_") + jsonObj.substring(endIdx);
+                                }
+
+                                System.out.println("jsonObj : \n" + jsonObj);
+
+                                String xml = "<xml>" + XML.toString(new JSONObject(jsonObj)) + "</xml>";
 
                                 String query = "INSERT INTO \"HELLO\".\"ci_instance_history\"\n"
                                             + "VALUES ("
