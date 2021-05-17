@@ -22,7 +22,8 @@ public class Tibero {
     private Connection conn = null;
 
     public Tibero(){
-        this("172.23.4.101", 31516, "tibero", "hello", "tibero");
+        this("kubernetes.docker.internal", 30428, "tibero", "hello", "tibero");
+        // this("172.23.4.101", 31516, "tibero", "hello", "tibero");
     }
 
     public Tibero(String ip, int port, String database, String user, String password){

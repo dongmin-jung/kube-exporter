@@ -1,0 +1,5 @@
+kubectl create ns dongmin
+kubectl create sa superuser
+kubectl create clusterrolebinding superuser --clusterrole=cluster-admin --user=default:superuser
+kubectl get secret | grep superuser
+kubectl get secret superuser-token-xxxxx -o yaml -> base64 decode

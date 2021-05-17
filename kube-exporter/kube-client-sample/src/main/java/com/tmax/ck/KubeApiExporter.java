@@ -69,7 +69,9 @@ public class KubeApiExporter extends Thread {
         String kind = jsonObject.get("object").getAsJsonObject().get("kind").getAsString();
         String namespace = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("namespace").getAsString();
         String name = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("name").getAsString();
-        return kind + "." + namespace + "." + name;
+        String uid = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("uid").getAsString();
+        String version = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("resourceVersion").getAsString();
+        return kind + "." + namespace + "." + name + "." + uid + "." + version;
     }
 
     private String getType(JsonObject jsonObject) {

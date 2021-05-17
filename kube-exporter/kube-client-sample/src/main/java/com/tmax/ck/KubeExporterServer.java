@@ -61,6 +61,7 @@ public class KubeExporterServer {
                             
                             if(obj!=null){
                                 String unixTime = Long.toString(Instant.now().getEpochSecond());
+                                System.out.println("unixTime="+unixTime);
                                 String pk = obj.getPrimaryKey();
                                 String type = obj.getType();
                                 String jsonObj = obj.getPayload();
@@ -75,7 +76,7 @@ public class KubeExporterServer {
                                     jsonObj = jsonObj.substring(0,startIdx) + jsonObj.substring(endIdx);
                                 }
 
-                                // replace slashes in keys
+                                // replace slashes in keys to underscores
                                 String slashesInKeysRegex = "\"([^\":/]*/)+[^\":/]*\":";
                                 Pattern slashesInKeysPattern = Pattern.compile(slashesInKeysRegex);
                                 Matcher slashesInKeysMatcher = slashesInKeysPattern.matcher(jsonObj);
@@ -101,6 +102,8 @@ public class KubeExporterServer {
                                 tibero.connect();
                                 System.out.println("connected to tibero");
                                 
+                                String unixTime2 = Long.toString(Instant.now().getEpochSecond());
+                                System.out.println("unixTime2:"+unixTime2);
                                 tibero.executeQuery(query);
                                 System.out.println("executed query\n\n");
 
@@ -127,7 +130,7 @@ public class KubeExporterServer {
         insertThread.start();
 
         /** TODO: read from SA secret */
-        String bearerToken = "eyJhbGciOiJSUzI1NiIsImtpZCI6Imt6NnpPTllzNGNnN2RwdGlhcnNLNGpGNGxiV1JreGdURF9acmhtUkN0bFUifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6InJvb3QtdG9rZW4tbTcyd3MiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoicm9vdCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6Ijc3OGUyZTYwLWY2YzItNDZmOS05NzY4LWQ5ZGIyOTZiMWI2YSIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OnJvb3QifQ.QJZx1w9dH3-T11o4-l3oIZve2xT74aBMmG89aRtbKvsTSOJzktGq3-qo4ydU6PvgZi6DOeVNa93J9XvBrWtQCqXX3kTwBIt551l4d5vGy8SZLEDWWsXk58YFTb8i3aesGT88V3B_QT-9BRaqixwssLXucEgeSkbp_HhbTQaocxDh79QXoYMP-hBFI9lTpNJT_DhQM9iY406PwK-hddoSGmP_cD6hPfBMr53Ht6e9SnuFf4_zdDfFpiONNy-a-SDrXFd45_JNoRmFRwy3LxwK8QkBnpuLfenZEaZI1meJIXN4CVnRIKl_jHwFqUVRqdfE6_JROZtakdbgUc25aiybYQ";
+        String bearerToken = "eyJhbGciOiJSUzI1NiIsImtpZCI6InpXdEFLRjdiRDRrM2M2cnlHaE05UmppclliaVl5aUF3UHhlemt0Nmk0UXcifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6InN1cGVydXNlci10b2tlbi10cWNiNCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50Lm5hbWUiOiJzdXBlcnVzZXIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiI3MmM0ZWVhMS1jMTI2LTRmYWQtOTc2YS0yZWMzZWY1MTJkM2IiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6ZGVmYXVsdDpzdXBlcnVzZXIifQ.ZzUZyvVXcX_wx9Rr0wkfx6fCty4FFC8-YfdN_SUdXEGVSehtAl7WTsc4SUi55FIdK7H8RPy5Z8Hw4Xagw6Lk7BjRMuS_0wtURqqvnhW49Hwv3kQEF0ek1Ej0zcMUmzapVOC76A3U9jbUF32PignMga2klSFFewbrIsoabLXhzHZ-RpwrjoqY_ClFN0WEWn8PsguRErnkmZRM7Id1UQ5uqbHm4ntEo3RtD7trnmkJbIm5oC67Kf09VaLc3amANgXIQ06E6LxpI_8jAzCfiQl8z8spJ35axGmrr8tNLh8BpnKW3462oMZpuz8QlfVyas4o6Y-W61_G5neL_0YXmioBOw";
         String kubeApiServer = "https://kubernetes.docker.internal:6443";
         client = Config.fromToken(kubeApiServer, bearerToken);
 
