@@ -1,5 +1,6 @@
 package com.tmax.ck;
 
+import java.util.ArrayList;
 import java.io.IOException;
 import java.util.HashMap;
 import com.google.gson.GsonBuilder;
@@ -8,14 +9,17 @@ import com.google.gson.Gson;
 import fi.iki.elonen.NanoHTTPD;
 
 class WatchUrl {
-    public String url;
+    public String kubeApiServer;
+    public String bearerToken;
+    public String cacrt;
+    public ArrayList<String> urlList;
 }
 public class WebApp extends NanoHTTPD {
 	public KubeExporterServer server;
+	public ArrayList<KubeExporterServer> kubeExporterServerList = new ArrayList<>();
 	
-	public WebApp(int port, KubeExporterServer server) throws IOException {
+	public WebApp(int port) throws IOException {
 		super(port);
-		this.server = server;
 		System.out.println("Listening port " + Integer.toString(port));
         start(0, false);
 	}
@@ -32,7 +36,7 @@ public class WebApp extends NanoHTTPD {
 				final HashMap<String, String> map = new HashMap<String, String>();
 				session.parseBody(map);
 				String data = map.get("postData");
-				System.out.println("data : \n" + data);
+				// System.out.println("data : \n" + data);
 				response = newFixedLengthResponse("data : \n" + data);
 				
 				GsonBuilder builder = new GsonBuilder();
@@ -41,10 +45,35 @@ public class WebApp extends NanoHTTPD {
 				WatchUrl watchUrl = gson.fromJson(data,WatchUrl.class);
 				
 				data = gson.toJson(watchUrl);
-				System.out.println("WatchUrl Object as string : "+data);
+				// System.out.println("WatchUrl Object as string : "+data);
 
-				server.addResource(watchUrl.url);
 
+
+				Boolean isExistingServer = false;
+				KubeExporterServer server;
+
+				// TODO: 기존 server list에 이미 있던거면 addresource만 하고
+				// 새로운 거면 추가해주면서 server init start
+				for (KubeExporterServer existingServer : kubeExporterServerList) {
+					if (existingServer.getKubeApiServer() == watchUrl.kubeApiServer && existingServer.getBearerToken() == watchUrl.bearerToken && existingServer.getCacrt() == watchUrl.cacrt) {
+						isExistingServer = true;
+						for (String url : watchUrl.urlList) {
+							existingServer.addResource(url);
+						}
+						break;
+					}
+				}
+				if(!isExistingServer){
+					server = new KubeExporterServer(watchUrl.kubeApiServer, watchUrl.bearerToken, watchUrl.cacrt);
+					kubeExporterServerList.add(server);
+					server.init();
+					server.start();
+					for (String url : watchUrl.urlList) {
+						// TODO: server에 이미 추가된 리소스인지 학인?
+						// addResource 메서드 자체에서 확인하기?
+						server.addResource(url);
+					}
+				}
 				// server.addResource("/api/v1/namespaces/kube-system/pods");
 				// server.addResource("/api/v1/namespaces/kube-system/services");
 				// server.addResource("/apis/apps/v1/namespaces/kube-system/deployments");
@@ -73,7 +102,6 @@ public class WebApp extends NanoHTTPD {
 					// throw t;
 				}
 			}
-			
 			// } catch(Exception e){
 			// 	System.out.println("Exception : "+e.toString());
 			// 	response = newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, e.toString());

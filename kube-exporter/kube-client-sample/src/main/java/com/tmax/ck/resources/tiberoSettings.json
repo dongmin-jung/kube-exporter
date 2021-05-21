@@ -1,0 +1,7 @@
+{
+    "ip" : "kubernetes.docker.internal",
+    "port" : 30428,
+    "database" : "tibero",
+    "user" : "hello",
+    "password" : "tibero"
+}

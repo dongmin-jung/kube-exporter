@@ -65,13 +65,19 @@ public class KubeApiExporter extends Thread {
     }
 
     private String getPK(JsonObject jsonObject) {
-        // String uid = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("uid").getAsString();
-        String kind = jsonObject.get("object").getAsJsonObject().get("kind").getAsString();
-        String namespace = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("namespace").getAsString();
-        String name = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("name").getAsString();
-        String uid = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("uid").getAsString();
-        String version = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("resourceVersion").getAsString();
-        return kind + "." + namespace + "." + name + "." + uid + "." + version;
+        // System.out.println(jsonObject.toString());
+        try {
+            // String uid = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("uid").getAsString();
+            String kind = jsonObject.get("object").getAsJsonObject().get("kind").getAsString();
+            String namespace = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("namespace").getAsString();
+            String name = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("name").getAsString();
+            String uid = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("uid").getAsString();
+            String version = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("resourceVersion").getAsString();
+            return kind + "." + namespace + "." + name + "." + uid + "." + version;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "";
+        }
     }
 
     private String getType(JsonObject jsonObject) {
