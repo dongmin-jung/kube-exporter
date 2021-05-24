@@ -13,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.io.Reader;
 
-
 // import com.tmax.tibero.jdbc.*;
 // import com.tmax.tibero.jdbc.ext.*;
 
@@ -35,10 +34,6 @@ public class Tibero {
         String user;
         String password;
     }
-
-    // public Tibero(){
-    //     this("kubernetes.docker.internal", 30428, "tibero", "hello", "tibero");
-    // }
 
     public Tibero(){
         try {

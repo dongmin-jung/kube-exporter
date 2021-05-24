@@ -22,6 +22,7 @@ import org.json.JSONObject;
 import org.json.XML;
 
 import java.io.ByteArrayInputStream;
+
 public class KubeExporterServer {
     private ThreadPoolExecutor executor;
     private LinkedBlockingDeque<DataObject> historyInsertQueue;
@@ -39,6 +40,10 @@ public class KubeExporterServer {
         this.kubeApiServer = kubeApiServer;
         this.bearerToken = bearerToken;
         this.cacrt = cacrt;
+        client = Config.fromToken(kubeApiServer, bearerToken);
+        client.setSslCaCert(new ByteArrayInputStream(cacrt.getBytes()));        
+        client.setReadTimeout(0);
+        Configuration.setDefaultApiClient(client);
     }
 
     public void init() throws FileNotFoundException {
@@ -47,13 +52,7 @@ public class KubeExporterServer {
         executor = new ThreadPoolExecutor(100, 100, 1024L, TimeUnit.MILLISECONDS, workQueue);
         historyInsertQueue = new LinkedBlockingDeque<DataObject>(1024);
 
-        client = Config.fromToken(kubeApiServer, bearerToken);
-        client.setSslCaCert(new ByteArrayInputStream(cacrt.getBytes()));        
-        client.setReadTimeout(0);
-        Configuration.setDefaultApiClient(client);
-
         insertThread = new Thread(new Runnable(){
-
             @Override
             public void run() {
                 DataObject object = null;
@@ -63,40 +62,12 @@ public class KubeExporterServer {
                         /** polling until historyInsertQueue is empty */
                         while (true) {
                             DataObject tmp = historyInsertQueue.poll();
-                            if (tmp != null)
-                                insertObjectList.add(tmp);
-                            else
-                                break;
+                            if (tmp != null) insertObjectList.add(tmp);
+                            else break;
                         }
                         
                         for (DataObject obj : insertObjectList) {
-                            /** batch insert logic here */
-                            // System.out.println("DataObject : ");
-                            // System.out.println(obj);
-                            
-                            if(obj!=null){
-                                String unixTime = Long.toString(Instant.now().getEpochSecond());
-                                String pk = obj.getPrimaryKey();
-                                String type = obj.getType();
-                                String jsonObj = obj.getPayload();
-
-                                jsonObj = dropManagedFields(jsonObj);
-                                jsonObj = replaceSlashesInKeysToUnderscores(jsonObj);
-
-                                // System.out.println("jsonObj : \n" + jsonObj);
-
-                                String xml = "<xml>" + XML.toString(new JSONObject(jsonObj)) + "</xml>";
-
-                                String query = "INSERT INTO \"HELLO\".\"ci_instance_history\"\n"
-                                            + "VALUES ("
-                                            + "'" + pk + "'" + ","
-                                            + "'" + unixTime + "'" + ","
-                                            + "'" + type + "'" + ","
-                                            + "XMLType('" + xml + "'));";
-                                System.out.println("query to execute : \n" + query);
-
-                                writeToTibero(query);
-                            }
+                            if(obj!=null) writeToTibero(generateTiberoQuery(obj));
                         }
                         
                         /** clear insert list */
@@ -105,12 +76,9 @@ public class KubeExporterServer {
                         /** wait until new DataObject is pushed */
                         object = historyInsertQueue.poll(5000, TimeUnit.MILLISECONDS);
                         insertObjectList.add(object);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    if (state == State.STOPPED) {
-                        return;
-                    }
+                    } catch (InterruptedException e) { e.printStackTrace(); }
+
+                    if (state == State.STOPPED) return;
                 }
             }
         });
@@ -169,6 +137,27 @@ public class KubeExporterServer {
             jsonObj = jsonObj.substring(0,startIdx) + jsonObj.substring(startIdx, endIdx).replace("/","_") + jsonObj.substring(endIdx);
         }
         return jsonObj;
+    }
+
+    private String generateTiberoQuery(DataObject obj){
+        String unixTime = Long.toString(Instant.now().getEpochSecond());
+        String pk = obj.getPrimaryKey();
+        String type = obj.getType();
+        String jsonObj = obj.getPayload();
+
+        jsonObj = dropManagedFields(jsonObj);
+        jsonObj = replaceSlashesInKeysToUnderscores(jsonObj);
+
+        // System.out.println("jsonObj : \n" + jsonObj);
+
+        String xml = "<xml>" + XML.toString(new JSONObject(jsonObj)) + "</xml>";
+
+        return "INSERT INTO \"HELLO\".\"ci_instance_history\"\n"
+                    + "VALUES ("
+                    + "'" + pk + "'" + ","
+                    + "'" + unixTime + "'" + ","
+                    + "'" + type + "'" + ","
+                    + "XMLType('" + xml + "'));";
     }
 
     private void writeToTibero(String query){

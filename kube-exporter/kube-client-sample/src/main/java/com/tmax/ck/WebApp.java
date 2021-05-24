@@ -79,7 +79,7 @@ public class WebApp extends NanoHTTPD {
 				// server.addResource("/apis/apps/v1/namespaces/kube-system/deployments");
 				// server.addResource("/apis/apiextensions.k8s.io/v1/namespaces/default/customresourcedefinitions");
 			} catch (Throwable t){
-					System.out.println("Exception : "+t.toString());
+					System.out.println("Exception : " + t.toString());
 					response = newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, t.toString());
 				if(t instanceof Exception){
 					// if(t instanceof IOException){
