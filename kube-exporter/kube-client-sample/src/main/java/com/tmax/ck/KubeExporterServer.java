@@ -22,6 +22,7 @@ import org.json.JSONObject;
 import org.json.XML;
 
 import java.io.ByteArrayInputStream;
+import org.apache.commons.codec.binary.Base64;
 
 public class KubeExporterServer {
     private ThreadPoolExecutor executor;
@@ -40,8 +41,9 @@ public class KubeExporterServer {
         this.kubeApiServer = kubeApiServer;
         this.bearerToken = bearerToken;
         this.cacrt = cacrt;
-        client = Config.fromToken(kubeApiServer, bearerToken);
-        client.setSslCaCert(new ByteArrayInputStream(cacrt.getBytes()));        
+
+        client = Config.fromToken(kubeApiServer, new String(Base64.decodeBase64(bearerToken.getBytes())));
+        client.setSslCaCert(new ByteArrayInputStream(Base64.decodeBase64(cacrt.getBytes())));        
         client.setReadTimeout(0);
         Configuration.setDefaultApiClient(client);
     }
