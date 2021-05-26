@@ -15,7 +15,6 @@ class WatchUrl {
     public ArrayList<String> urlList;
 }
 public class WebApp extends NanoHTTPD {
-	public KubeExporterServer server;
 	public ArrayList<KubeExporterServer> kubeExporterServerList = new ArrayList<>();
 	
 	public WebApp(int port) throws IOException {
@@ -46,17 +45,20 @@ public class WebApp extends NanoHTTPD {
 				
 				data = gson.toJson(watchUrl);
 				// System.out.println("WatchUrl Object as string : "+data);
-
-
+				
+				System.out.println("kubeExporterServerList servers : ");
+				for (KubeExporterServer existingServer : kubeExporterServerList) {
+					System.out.println(existingServer.getKubeApiServer());
+				}
 
 				Boolean isExistingServer = false;
-				KubeExporterServer server;
 
 				// TODO: 기존 server list에 이미 있던거면 addresource만 하고
 				// 새로운 거면 추가해주면서 server init start
 				for (KubeExporterServer existingServer : kubeExporterServerList) {
-					if (existingServer.getKubeApiServer() == watchUrl.kubeApiServer && existingServer.getBearerToken() == watchUrl.bearerToken && existingServer.getCacrt() == watchUrl.cacrt) {
+					if (existingServer.getKubeApiServer().equals(watchUrl.kubeApiServer) && existingServer.getBearerToken().equals(watchUrl.bearerToken) && existingServer.getCacrt().equals(watchUrl.cacrt)) {
 						isExistingServer = true;
+						System.out.println("Existing server");
 						for (String url : watchUrl.urlList) {
 							existingServer.addResource(url);
 						}
@@ -64,13 +66,13 @@ public class WebApp extends NanoHTTPD {
 					}
 				}
 				if(!isExistingServer){
-					server = new KubeExporterServer(watchUrl.kubeApiServer, watchUrl.bearerToken, watchUrl.cacrt);
+					System.out.println("New server");
+					KubeExporterServer server = new KubeExporterServer(watchUrl.kubeApiServer, watchUrl.bearerToken, watchUrl.cacrt);
 					kubeExporterServerList.add(server);
+					System.out.println("server added to server list");
 					server.init();
 					server.start();
 					for (String url : watchUrl.urlList) {
-						// TODO: server에 이미 추가된 리소스인지 학인?
-						// addResource 메서드 자체에서 확인하기?
 						server.addResource(url);
 					}
 				}

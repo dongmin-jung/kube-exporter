@@ -6,6 +6,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
 import io.kubernetes.client.openapi.ApiClient;
+
 import okhttp3.Call;
 import okhttp3.Response;
 
@@ -63,12 +64,12 @@ public class KubeApiExporter extends Thread {
     private String getPK(JsonObject jsonObject) {
         // System.out.println(jsonObject.toString());
         try {
-            String kind = jsonObject.get("object").getAsJsonObject().get("kind").getAsString();
             String namespace = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("namespace").getAsString();
+            String kind = jsonObject.get("object").getAsJsonObject().get("kind").getAsString();
             String name = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("name").getAsString();
             String uid = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("uid").getAsString();
             String version = jsonObject.get("object").getAsJsonObject().get("metadata").getAsJsonObject().get("resourceVersion").getAsString();
-            return kind + "." + namespace + "." + name + "." + uid + "." + version;
+            return client.getBasePath() + "::" + namespace + "::" + kind + "::" + name + "::" + uid + "::" + version;
         } catch (Exception e) {
             e.printStackTrace();
             return "";
@@ -78,5 +79,13 @@ public class KubeApiExporter extends Thread {
     private String getType(JsonObject jsonObject) {
         String type = jsonObject.get("object").getAsJsonObject().get("kind").getAsString();
         return type;
+    }
+    
+    public ApiClient getClient() {
+        return client;
+    }
+
+    public String getUrl() {
+        return url;
     }
 }

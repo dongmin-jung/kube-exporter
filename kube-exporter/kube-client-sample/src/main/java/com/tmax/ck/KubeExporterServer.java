@@ -36,6 +36,7 @@ public class KubeExporterServer {
     private String kubeApiServer;
     private String bearerToken;
     private String cacrt;
+    private ArrayList<KubeApiExporter> kubeApiExporterList = new ArrayList<>();
 
     public KubeExporterServer(String kubeApiServer, String bearerToken, String cacrt){
         this.kubeApiServer = kubeApiServer;
@@ -92,10 +93,26 @@ public class KubeExporterServer {
     }
     
     public void addResource(String url) {
+        System.out.println("addResource start");
+        
         /** test */
-        // TODO: 중복된 것 처리
-        KubeApiExporter kubeApiExporter = new KubeApiExporter(url, client, historyInsertQueue);
-        executor.execute(kubeApiExporter);
+        Boolean isExistingExporter = false;
+        for (KubeApiExporter existingExporter : kubeApiExporterList) {
+            if (existingExporter.getUrl().equals(url) && existingExporter.getClient().getBasePath().equals(client.getBasePath())) {
+                isExistingExporter = true;
+                System.out.println("addResource skip (existing url)");
+                break;
+            }
+        }
+        
+        // KubeApiExporter가 기존에 있던 것이면 아무 것도 하지 않음
+        // 새로운 KubeApiExporter는 생성하고 execute 해줌
+        if(!isExistingExporter){
+            KubeApiExporter kubeApiExporter = new KubeApiExporter(url, client, historyInsertQueue);
+            executor.execute(kubeApiExporter);
+            kubeApiExporterList.add(kubeApiExporter);
+            System.out.println("addResource done");
+        }
     }
 
     public void stop() {
