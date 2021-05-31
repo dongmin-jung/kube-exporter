@@ -1,10 +1,9 @@
 package com.tmax.ck;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -29,14 +28,13 @@ public class KubeExporterServer {
     private LinkedBlockingDeque<DataObject> historyInsertQueue;
     private LinkedBlockingQueue<Runnable> workQueue;
     private Thread insertThread;
-    private Map<String, String> exporterTargetMap;
     public enum State {INIT, RUNNING, STOPPED};
     private State state = State.INIT;
     private ApiClient client;
     private String kubeApiServer;
     private String bearerToken;
     private String cacrt;
-    private ArrayList<KubeApiExporter> kubeApiExporterList = new ArrayList<>();
+    private Map<String, KubeApiExporter> exporterMap = new HashMap<>();
 
     public KubeExporterServer(String kubeApiServer, String bearerToken, String cacrt){
         this.kubeApiServer = kubeApiServer;
@@ -63,14 +61,14 @@ public class KubeExporterServer {
                 while (true) {
                     try {
                         /** polling until historyInsertQueue is empty */
-                        while (true) {
+                        while (state.equals(State.RUNNING)) {
                             DataObject tmp = historyInsertQueue.poll();
                             if (tmp != null) insertObjectList.add(tmp);
                             else break;
                         }
                         
                         for (DataObject obj : insertObjectList) {
-                            if(obj!=null) writeToTibero(generateTiberoQuery(obj));
+                            writeToTibero(generateTiberoQuery(obj));
                         }
                         
                         /** clear insert list */
@@ -78,10 +76,10 @@ public class KubeExporterServer {
 
                         /** wait until new DataObject is pushed */
                         object = historyInsertQueue.poll(5000, TimeUnit.MILLISECONDS);
-                        insertObjectList.add(object);
+                        if (object != null) insertObjectList.add(object);
                     } catch (InterruptedException e) { e.printStackTrace(); }
 
-                    if (state == State.STOPPED) return;
+                    if (state.equals(State.STOPPED)) return;
                 }
             }
         });
@@ -89,30 +87,7 @@ public class KubeExporterServer {
     }
 
     public void start() {
-
-    }
-    
-    public void addResource(String url) {
-        System.out.println("addResource start");
-        
-        /** test */
-        Boolean isExistingExporter = false;
-        for (KubeApiExporter existingExporter : kubeApiExporterList) {
-            if (existingExporter.getUrl().equals(url) && existingExporter.getClient().getBasePath().equals(client.getBasePath())) {
-                isExistingExporter = true;
-                System.out.println("addResource skip (existing url)");
-                break;
-            }
-        }
-        
-        // KubeApiExporter가 기존에 있던 것이면 아무 것도 하지 않음
-        // 새로운 KubeApiExporter는 생성하고 execute 해줌
-        if(!isExistingExporter){
-            KubeApiExporter kubeApiExporter = new KubeApiExporter(url, client, historyInsertQueue);
-            executor.execute(kubeApiExporter);
-            kubeApiExporterList.add(kubeApiExporter);
-            System.out.println("addResource done");
-        }
+        state = State.RUNNING;
     }
 
     public void stop() {
@@ -120,6 +95,30 @@ public class KubeExporterServer {
             executor.shutdown();
         }
         state = State.STOPPED;
+    }
+    
+    public void addResource(String url) {
+        if (!exporterMap.containsKey(url)) {
+            exporterMap.put(url, new KubeApiExporter(url, client, historyInsertQueue));
+            executor.execute(exporterMap.get(url));
+            System.out.println("addResource done");
+        } else {
+            System.out.println("addResource skipped");
+        }
+    }
+
+    public void deleteResource(String url) {
+        KubeApiExporter exporterToDelete = exporterMap.get(url);
+        exporterToDelete.stopExporter();
+        while (exporterToDelete.isAlive()) {
+            System.out.println("try to interrupt");
+            exporterToDelete.interrupt();
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public String getKubeApiServer(){
@@ -132,17 +131,22 @@ public class KubeExporterServer {
         return cacrt;
     }
 
-    private String dropManagedFields(String jsonObj){
+    private String dropManagedFieldPreiods(String jsonString){
+        // drop <.></.> from managedField
+        return jsonString.replaceAll("<\\.></\\.>","");
+    }
+
+    private String dropManagedFields(String jsonString){
         // drop managedFields
         String managedFieldsRegex = ",\"managedFields\":\\[(\\{\"manager\":.*?\\},)*\\{\"manager\":.*?\\}\\]";
         Pattern managedFieldsPattern = Pattern.compile(managedFieldsRegex);
-        Matcher managedFieldsMatcher = managedFieldsPattern.matcher(jsonObj);
+        Matcher managedFieldsMatcher = managedFieldsPattern.matcher(jsonString);
         while (managedFieldsMatcher.find()) {
             int startIdx = managedFieldsMatcher.start();
             int endIdx = managedFieldsMatcher.end();
-            jsonObj = jsonObj.substring(0,startIdx) + jsonObj.substring(endIdx);
+            jsonString = jsonString.substring(0,startIdx) + jsonString.substring(endIdx);
         }
-        return jsonObj;
+        return jsonString;
     }
 
     private String replaceSlashesInKeysToUnderscores(String jsonObj){
@@ -162,14 +166,17 @@ public class KubeExporterServer {
         String unixTime = Long.toString(Instant.now().getEpochSecond());
         String pk = obj.getPrimaryKey();
         String type = obj.getType();
-        String jsonObj = obj.getPayload();
+        String jsonString = obj.getPayload();
 
-        jsonObj = dropManagedFields(jsonObj);
-        jsonObj = replaceSlashesInKeysToUnderscores(jsonObj);
+        System.out.println("jsonString : " + jsonString);
 
-        // System.out.println("jsonObj : \n" + jsonObj);
+        jsonString = dropManagedFields(jsonString);
+        jsonString = replaceSlashesInKeysToUnderscores(jsonString);
 
-        String xml = "<xml>" + XML.toString(new JSONObject(jsonObj)) + "</xml>";
+        System.out.println("processed jsonString : \n" + jsonString);
+
+        String xml = "<xml>" + XML.toString(new JSONObject(jsonString)) + "</xml>";
+        System.out.println("xml : " + xml);
 
         return "INSERT INTO \"HELLO\".\"ci_instance_history\"\n"
                     + "VALUES ("

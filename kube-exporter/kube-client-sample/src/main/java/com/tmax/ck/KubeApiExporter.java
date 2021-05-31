@@ -15,6 +15,8 @@ public class KubeApiExporter extends Thread {
     private ApiClient client;
     private LinkedBlockingDeque<DataObject> insertQueue;
     private Gson gson = new Gson();
+    private enum STATE {RUNNING, STOPPED};
+    private STATE state = STATE.RUNNING;
 
     public KubeApiExporter(String url, ApiClient client, LinkedBlockingDeque<DataObject> insertQueue) {
         this.url = url;
@@ -31,7 +33,7 @@ public class KubeApiExporter extends Thread {
             Call call = GenericCaller.makeCall(url, client, true);
             Response response = call.execute();
             
-            while(true) {
+            while(state.equals(STATE.RUNNING)) {
                 /** connect or reconnect */
                 if (call.isCanceled()) {
                     call = GenericCaller.makeCall(url, client, true);
@@ -55,6 +57,14 @@ public class KubeApiExporter extends Thread {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public void stopExporter() {
+        state = STATE.STOPPED;
+    }
+
+    public void runExporter() {
+        state = STATE.RUNNING;
     }
 
     private String getPayload(JsonObject jsonObject) {
