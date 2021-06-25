@@ -1,0 +1,6 @@
+{
+    "JDBC_DRIVER" : "com.mysql.jdbc.Driver",
+    "DB_URL" : "jdbc:mysql://kubernetes.docker.internal:30430/testschema",
+    "USERNAME" : "root",
+    "PASSWORD" : "mysql"
+}

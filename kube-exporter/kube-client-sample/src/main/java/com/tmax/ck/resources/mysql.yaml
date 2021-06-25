@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-db
+  namespace: dongmin
+  labels:
+    hypercloud: mysql-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      hypercloud: mysql-db
+  template:
+    metadata:
+      name: mysql-db
+      labels:
+        hypercloud: mysql-db
+    spec:
+      containers:
+      - image: mysql:latest
+        name: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: "mysql"
+        livenessProbe:
+          tcpSocket:
+            port: 3306
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: meta-db
+        resources:
+          limits:
+            memory: "3Gi"
+            cpu: "500m"
+      tolerations:
+      - effect: NoExecute
+        key: node.kubernetes.io/not-ready
+        tolerationSeconds: 10
+      - effect: NoExecute
+        key: node.kubernetes.io/unreachable
+        tolerationSeconds: 10
+      volumes:
+        - name: meta-db
+          hostPath:
+            path: "/mnt/c/Users/dongmin/mysql-meta-db"
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-db-svc
+  namespace: dongmin
+spec:
+  ports:
+  - name: "base"
+    nodePort: 30430
+    protocol: TCP
+    port: 3306
+  selector:
+    hypercloud: mysql-db
+  type: NodePort

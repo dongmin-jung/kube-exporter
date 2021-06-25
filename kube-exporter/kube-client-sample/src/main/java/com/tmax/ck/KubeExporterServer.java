@@ -68,7 +68,7 @@ public class KubeExporterServer {
                         }
                         
                         for (DataObject obj : insertObjectList) {
-                            writeToTibero(generateTiberoQuery(obj));
+                            writeToMysql(generateMysqlQuery(obj));
                         }
                         
                         /** clear insert list */
@@ -131,38 +131,7 @@ public class KubeExporterServer {
         return cacrt;
     }
 
-    private String dropManagedFieldPreiods(String jsonString){
-        // drop <.></.> from managedField
-        return jsonString.replaceAll("<\\.></\\.>","");
-    }
-
-    private String dropManagedFields(String jsonString){
-        // drop managedFields
-        String managedFieldsRegex = ",\"managedFields\":\\[(\\{\"manager\":.*?\\},)*\\{\"manager\":.*?\\}\\]";
-        Pattern managedFieldsPattern = Pattern.compile(managedFieldsRegex);
-        Matcher managedFieldsMatcher = managedFieldsPattern.matcher(jsonString);
-        while (managedFieldsMatcher.find()) {
-            int startIdx = managedFieldsMatcher.start();
-            int endIdx = managedFieldsMatcher.end();
-            jsonString = jsonString.substring(0,startIdx) + jsonString.substring(endIdx);
-        }
-        return jsonString;
-    }
-
-    private String replaceSlashesInKeysToUnderscores(String jsonObj){
-        // replace slashes in keys to underscores
-        String slashesInKeysRegex = "\"([^\":/]*/)+[^\":/]*\":";
-        Pattern slashesInKeysPattern = Pattern.compile(slashesInKeysRegex);
-        Matcher slashesInKeysMatcher = slashesInKeysPattern.matcher(jsonObj);
-        while (slashesInKeysMatcher.find()) {
-            int startIdx = slashesInKeysMatcher.start();
-            int endIdx = slashesInKeysMatcher.end();
-            jsonObj = jsonObj.substring(0,startIdx) + jsonObj.substring(startIdx, endIdx).replace("/","_") + jsonObj.substring(endIdx);
-        }
-        return jsonObj;
-    }
-
-    private String generateTiberoQuery(DataObject obj){
+    private String generateMysqlQuery(DataObject obj){
         String unixTime = Long.toString(Instant.now().getEpochSecond());
         String pk = obj.getPrimaryKey();
         String type = obj.getType();
@@ -170,29 +139,26 @@ public class KubeExporterServer {
 
         System.out.println("jsonString : " + jsonString);
 
-        jsonString = dropManagedFields(jsonString);
-        jsonString = replaceSlashesInKeysToUnderscores(jsonString);
+        // https://stackoverflow.com/questions/47724990/invalid-json-text-sql-java-json-object
+        // https://stackoverflow.com/questions/1701839/string-replaceall-single-backslashes-with-double-backslashes
+        jsonString = jsonString.replaceAll("\\\\\\\"","\\\\\\\\\"");
+        System.out.println("jsonString : " + jsonString);
 
-        System.out.println("processed jsonString : \n" + jsonString);
-
-        String xml = "<xml>" + XML.toString(new JSONObject(jsonString)) + "</xml>";
-        System.out.println("xml : " + xml);
-
-        return "INSERT INTO \"HELLO\".\"ci_instance_history\"\n"
+        return "INSERT INTO ci_instance_history\n"
                     + "VALUES ("
                     + "'" + pk + "'" + ","
                     + "'" + unixTime + "'" + ","
                     + "'" + type + "'" + ","
-                    + "XMLType('" + xml + "'));";
+                    + "'" + jsonString + "');";
     }
 
-    private void writeToTibero(String query){
-        Tibero tibero = new Tibero();
-        tibero.connect();
+    private void writeToMysql(String query){
+        MySQLConn mysql = new MySQLConn();
+        mysql.connect();
         
-        tibero.executeQuery(query);
+        mysql.executeUpdate(query);
         System.out.println("\nexecuted query\n");
 
-        tibero.disconnect();
+        mysql.disconnect();
     }
 }
